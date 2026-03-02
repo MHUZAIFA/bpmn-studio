@@ -62,6 +62,9 @@ export function BpmnModelerComponent() {
   const [templateView, setTemplateView] = useState<'grid' | 'list'>('grid');
   const [templateCategory, setTemplateCategory] = useState('All');
   const [hoveredTemplate, setHoveredTemplate] = useState<string | null>(null);
+  const [processViewMode, setProcessViewMode] = useState<'list' | 'grid'>('list');
+  const [processSortBy, setProcessSortBy] = useState<'updated' | 'name' | 'created'>('updated');
+  const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
 
   const canEdit = user && ROLE_HIERARCHY[user.role as Role] >= ROLE_HIERARCHY[Role.EDITOR];
   const canAdmin = user && ROLE_HIERARCHY[user.role as Role] >= ROLE_HIERARCHY[Role.ADMIN];
@@ -885,180 +888,361 @@ export function BpmnModelerComponent() {
       );
     }
 
-    // Has existing processes — compact layout with process list
+    // Has existing processes — dashboard layout
+    const sorted = [...processList].sort((a, b) => {
+      if (processSortBy === 'name') return (a.name as string).localeCompare(b.name as string);
+      if (processSortBy === 'created') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      return new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime();
+    });
     const filtered = processSearch.trim()
-      ? processList.filter((p) => (p.name as string).toLowerCase().includes(processSearch.trim().toLowerCase()))
-      : processList;
+      ? sorted.filter((p) => (p.name as string).toLowerCase().includes(processSearch.trim().toLowerCase()))
+      : sorted;
+
+    const greeting = (() => {
+      const h = new Date().getHours();
+      if (h < 12) return 'Good morning';
+      if (h < 18) return 'Good afternoon';
+      return 'Good evening';
+    })();
+
+    const relativeTime = (date: string | Date) => {
+      const diff = Date.now() - new Date(date).getTime();
+      const mins = Math.floor(diff / 60000);
+      if (mins < 1) return 'Just now';
+      if (mins < 60) return `${mins}m ago`;
+      const hours = Math.floor(mins / 60);
+      if (hours < 24) return `${hours}h ago`;
+      const days = Math.floor(hours / 24);
+      if (days === 1) return 'Yesterday';
+      if (days < 7) return `${days}d ago`;
+      if (days < 30) return `${Math.floor(days / 7)}w ago`;
+      return new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    };
+
+    const recentCount = processList.filter(p => Date.now() - new Date(p.updatedAt || p.createdAt).getTime() < 7 * 24 * 60 * 60 * 1000).length;
+
+    const processIcon = 'M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z';
 
     return (
-      <div className="flex-1 flex items-center justify-center overflow-y-auto" style={{ background: 'var(--bg-canvas)' }}>
-        <div className="w-full max-w-7xl px-4 sm:px-6 lg:px-8 pt-6">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6 sm:mb-8">
-            {/* Generate with AI */}
-            <button
-              onClick={() => workspace.setOnboardingMode('prompt')}
-              className="group flex items-center gap-3 rounded-xl border-2 px-4 py-3 text-left transition-all duration-200 hover:shadow-md"
-              style={{ background: 'var(--card-bg)', borderColor: 'var(--accent)' }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--accent-light)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--card-bg)'; }}
-            >
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-110" style={{ background: 'var(--accent-light)' }}>
-                <svg className="w-4.5 h-4.5" style={{ color: 'var(--accent)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-                </svg>
+      <div className="flex-1 flex flex-col overflow-hidden" style={{ background: 'var(--bg-canvas)' }}>
+        <div className="flex-1 overflow-y-auto">
+          <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-5 mb-6">
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2.5" style={{ color: 'var(--text-primary)' }}>
+                  {greeting}, {user?.username}
+                </h1>
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium" style={{ background: 'var(--accent-light)', color: 'var(--accent)' }}>
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                    </svg>
+                    {processList.length} process{processList.length !== 1 ? 'es' : ''}
+                  </span>
+                  {recentCount > 0 && (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium" style={{ background: 'var(--bg-secondary)', color: 'var(--text-muted)' }}>
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      {recentCount} active this week
+                    </span>
+                  )}
+                </div>
               </div>
-              <div className="min-w-0">
-                <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Generate with AI</h3>
-                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Describe in plain English</p>
-              </div>
-              <svg className="w-4 h-4 shrink-0 ml-auto opacity-0 -translate-x-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-x-0" style={{ color: 'var(--accent)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-              </svg>
-            </button>
-
-            {/* Templates */}
-            <button
-              onClick={() => { setTemplateModalOpen(true); setTemplateSearch(''); }}
-              className="group flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all duration-200 hover:shadow-md"
-              style={{ background: 'var(--card-bg)', borderColor: 'var(--border)' }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--accent-light)'; e.currentTarget.style.borderColor = 'var(--accent)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--card-bg)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
-            >
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-110" style={{ background: 'var(--accent-light)' }}>
-                <svg className="w-4.5 h-4.5" style={{ color: 'var(--accent)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                </svg>
-              </div>
-              <div className="min-w-0">
-                <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Templates</h3>
-                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Start from a template</p>
-              </div>
-              <svg className="w-4 h-4 shrink-0 ml-auto opacity-0 -translate-x-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-x-0" style={{ color: 'var(--accent)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-              </svg>
-            </button>
-
-            {/* Blank Canvas */}
-            <button
-              onClick={() => workspace.setOnboardingMode('canvas')}
-              className="group flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all duration-200 hover:shadow-md"
-              style={{ background: 'var(--card-bg)', borderColor: 'var(--border)' }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--accent-light)'; e.currentTarget.style.borderColor = 'var(--accent)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--card-bg)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
-            >
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-110" style={{ background: 'var(--accent-light)' }}>
-                <svg className="w-4.5 h-4.5" style={{ color: 'var(--accent)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-                </svg>
-              </div>
-              <div className="min-w-0">
-                <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Blank Canvas</h3>
-                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Design from scratch</p>
-              </div>
-              <svg className="w-4 h-4 shrink-0 ml-auto opacity-0 -translate-x-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-x-0" style={{ color: 'var(--accent)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-              </svg>
-            </button>
-          </div>
-
-          {/* Process list */}
-          <div className="mb-2">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-                Your processes
-                <span className="ml-1.5 text-[10px] font-normal normal-case" style={{ color: 'var(--text-muted)' }}>({filtered.length})</span>
-              </h3>
-            </div>
-            <div className="relative mb-3">
-              <svg className="w-5 h-5 absolute left-3 top-5.5 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-              </svg>
-              <input
-                type="text"
-                placeholder="Search processes..."
-                value={processSearch}
-                onChange={(e) => setProcessSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-3 rounded-lg border text-sm focus:outline-none focus:ring-2 transition-colors mb-2"
-                style={{ background: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text-primary)' }}
-              />
-              {processSearch && (
-                <button onClick={() => setProcessSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded" style={{ color: 'var(--text-muted)' }}>
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
-            </div>
-            <div className="space-y-4 overflow-y-auto scrollbar-hidden" style={{ height: 'calc(100vh - 21rem)' }}>
-              {filtered.map((p) => (
-                <div
-                  key={p._id}
-                  className="group flex items-center rounded-xl border transition-all duration-200 hover:shadow-sm"
-                  style={{ background: 'var(--card-bg)', borderColor: 'var(--border)' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.background = 'var(--accent-light)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--card-bg)'; }}
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => workspace.setOnboardingMode('canvas')}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all duration-200 hover:shadow-sm"
+                  style={{ background: 'var(--card-bg)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; }}
                 >
-                  <button onClick={() => handleSelectProcess(p._id)} className="flex-1 flex items-center gap-3 px-3.5 py-2.5 text-left min-w-0">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--accent-light)' }}>
-                      <svg className="w-4 h-4" style={{ color: 'var(--accent)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
-                      </svg>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{p.name as string}</p>
-                      <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                        {new Date(p.updatedAt || p.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </p>
-                    </div>
-                    <svg className="w-4 h-4 shrink-0 opacity-0 -translate-x-1 transition-all duration-200 group-hover:opacity-60 group-hover:translate-x-0" style={{ color: 'var(--text-muted)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  <svg className="w-4 h-4" style={{ color: 'var(--text-muted)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                  Blank
+                </button>
+                <button
+                  onClick={() => { setTemplateModalOpen(true); setTemplateSearch(''); }}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all duration-200 hover:shadow-sm"
+                  style={{ background: 'var(--card-bg)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; }}
+                >
+                  <svg className="w-4 h-4" style={{ color: 'var(--text-muted)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                  </svg>
+                  Templates
+                </button>
+                <button
+                  onClick={() => workspace.setOnboardingMode('prompt')}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all duration-200 shadow-sm hover:shadow-md hover:brightness-110"
+                  style={{ background: 'var(--accent)' }}
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                  </svg>
+                  New with AI
+                </button>
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="h-px mb-6" style={{ background: 'var(--border)' }} />
+
+            {/* Toolbar: search + sort + view toggle */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-5">
+              <div className="relative flex-1 sm:max-w-sm">
+                <svg className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                </svg>
+                <input
+                  type="text"
+                  placeholder="Search processes..."
+                  value={processSearch}
+                  onChange={(e) => setProcessSearch(e.target.value)}
+                  className="w-full pl-10 pr-8 py-2 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all"
+                  style={{ background: 'var(--input-bg)', borderColor: processSearch ? 'var(--accent)' : 'var(--input-border)', color: 'var(--text-primary)', boxShadow: processSearch ? '0 0 0 1px var(--accent)' : 'none' }}
+                />
+                {processSearch && (
+                  <button onClick={() => setProcessSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded" style={{ color: 'var(--text-muted)' }}>
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
-                  <div className="flex items-center gap-0.5 pr-2.5 shrink-0">
-                    {canEdit && (
-                      <button onClick={() => { setRenameId(p._id); setRenameName(p.name); setRenameModalOpen(true); }} className="p-1.5 rounded-lg transition-colors" style={{ color: 'var(--text-muted)' }} title="Rename">
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                      </button>
-                    )}
-                    {canAdmin && (
-                      <button onClick={() => handleDeleteProcess(p._id)} className="p-1.5 rounded-lg transition-colors text-red-400 hover:text-red-600" title="Delete">
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {filtered.length === 0 && processSearch.trim() && (
-                <div className="text-center py-6">
-                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No processes matching &ldquo;{processSearch}&rdquo;</p>
-                </div>
-              )}
-            </div>
-          </div>
+                )}
+              </div>
 
-          {/* Footer */}
-          <div className="mt-2 py-4 border-t flex flex-col sm:flex-row items-center justify-between gap-2" style={{ borderColor: 'var(--border)' }}>
-            <p className="text-center text-[11px]" style={{ color: 'var(--text-muted)' }}>
-              &copy; {new Date().getFullYear()} Flexspring. All rights reserved.
-            </p>
-            <div className="flex items-center justify-center gap-4 sm:gap-6 flex-wrap">
-              {[
-                { icon: 'M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z', label: 'Encrypted storage' },
-                { icon: 'M13 10V3L4 14h7v7l9-11h-7z', label: 'Git-like branching' },
-                { icon: 'M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z', label: 'AI-powered' },
-              ].map((f) => (
-                <div key={f.label} className="flex items-center gap-1.5">
-                  <svg className="w-3.5 h-3.5" style={{ color: 'var(--accent)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d={f.icon} />
-                  </svg>
-                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{f.label}</span>
+              <div className="flex items-center gap-2 sm:ml-auto">
+                {/* Sort dropdown */}
+                <div className="relative">
+                  <button
+                    onClick={() => setSortDropdownOpen(!sortDropdownOpen)}
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border text-sm transition-all cursor-pointer"
+                    style={{ background: 'var(--card-bg)', borderColor: sortDropdownOpen ? 'var(--accent)' : 'var(--border)', color: 'var(--text-secondary)' }}
+                  >
+                    <svg className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 7.5L7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5" />
+                    </svg>
+                    {{ updated: 'Last updated', name: 'Name', created: 'Date created' }[processSortBy]}
+                    <svg className={`w-3.5 h-3.5 transition-transform duration-200 ${sortDropdownOpen ? 'rotate-180' : ''}`} style={{ color: 'var(--text-muted)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                    </svg>
+                  </button>
+                  {sortDropdownOpen && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setSortDropdownOpen(false)} />
+                      <div className="absolute right-0 mt-1.5 w-44 rounded-xl border shadow-lg z-20 py-1 overflow-hidden" style={{ background: 'var(--card-bg)', borderColor: 'var(--border)' }}>
+                        {([['updated', 'Last updated'], ['name', 'Name'], ['created', 'Date created']] as const).map(([value, label]) => (
+                          <button
+                            key={value}
+                            onClick={() => { setProcessSortBy(value); setSortDropdownOpen(false); }}
+                            className="w-full text-left px-3.5 py-2 text-sm transition-colors flex items-center justify-between"
+                            style={{ color: processSortBy === value ? 'var(--accent)' : 'var(--text-secondary)' }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--accent-light)'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                          >
+                            {label}
+                            {processSortBy === value && (
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                              </svg>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
-              ))}
+
+                {/* View toggle */}
+                <div className="flex rounded-xl border overflow-hidden shrink-0" style={{ borderColor: 'var(--border)' }}>
+                  <button
+                    onClick={() => setProcessViewMode('list')}
+                    className="p-2 transition-colors"
+                    title="List view"
+                    style={{
+                      background: processViewMode === 'list' ? 'var(--accent)' : 'var(--card-bg)',
+                      color: processViewMode === 'list' ? '#fff' : 'var(--text-muted)',
+                    }}
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => setProcessViewMode('grid')}
+                    className="p-2 transition-colors"
+                    title="Grid view"
+                    style={{
+                      background: processViewMode === 'grid' ? 'var(--accent)' : 'var(--card-bg)',
+                      color: processViewMode === 'grid' ? '#fff' : 'var(--text-muted)',
+                    }}
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
             </div>
+
+            {/* Section header */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2.5">
+                <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  {processSearch.trim() ? 'Results' : 'All Processes'}
+                </h2>
+                <span className="text-[11px] font-medium px-2 py-0.5 rounded-md tabular-nums" style={{ background: 'var(--bg-secondary)', color: 'var(--text-muted)' }}>
+                  {filtered.length}
+                </span>
+                {processSearch.trim() && filtered.length > 0 && (
+                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    for &ldquo;{processSearch}&rdquo;
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* List view */}
+            {processViewMode === 'list' ? (
+              <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--border)' }}>
+                {/* Column headers */}
+                <div className="flex items-center px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider select-none" style={{ background: 'var(--bg-secondary)', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' }}>
+                  <div className="flex-1 min-w-0 pl-12">Name</div>
+                  <div className="w-32 text-right hidden sm:block">Modified</div>
+                  <div className="w-24 text-center shrink-0">Actions</div>
+                </div>
+                {filtered.map((p) => (
+                  <div
+                    key={p._id}
+                    className="flex items-center transition-colors duration-150"
+                    style={{ background: 'var(--card-bg)', borderTop: '1px solid var(--border)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--accent-light)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--card-bg)'; }}
+                  >
+                    <button onClick={() => handleSelectProcess(p._id)} className="flex-1 flex items-center gap-3 px-4 py-3.5 text-left min-w-0">
+                      <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--accent-light)' }}>
+                        <svg className="w-4 h-4" style={{ color: 'var(--accent)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d={processIcon} />
+                        </svg>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{p.name as string}</p>
+                        <p className="text-[11px] mt-0.5 sm:hidden" style={{ color: 'var(--text-muted)' }}>
+                          {relativeTime(p.updatedAt || p.createdAt)}
+                        </p>
+                      </div>
+                      <span className="text-xs shrink-0 hidden sm:block w-32 text-right tabular-nums" style={{ color: 'var(--text-muted)' }}>
+                        {relativeTime(p.updatedAt || p.createdAt)}
+                      </span>
+                    </button>
+                    <div className="flex items-center gap-1 w-24 justify-center shrink-0">
+                      {canEdit && (
+                        <button onClick={() => { setRenameId(p._id); setRenameName(p.name); setRenameModalOpen(true); }} className="p-1.5 rounded-lg transition-colors hover:bg-black/5" style={{ color: 'var(--text-muted)' }} title="Rename">
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                          </svg>
+                        </button>
+                      )}
+                      {canAdmin && (
+                        <button onClick={() => handleDeleteProcess(p._id)} className="p-1.5 rounded-lg transition-colors text-red-400 hover:text-red-600 hover:bg-red-50" title="Delete">
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              /* Grid view */
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filtered.map((p) => {
+                  const isRecent = Date.now() - new Date(p.updatedAt || p.createdAt).getTime() < 24 * 60 * 60 * 1000;
+                  return (
+                    <div
+                      key={p._id}
+                      className="relative rounded-xl border overflow-hidden transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5"
+                      style={{ background: 'var(--card-bg)', borderColor: 'var(--border)' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; }}
+                    >
+                      {/* Accent top strip */}
+                      <div className="h-1" style={{ background: 'var(--accent)', opacity: 0.6 }} />
+                      <button onClick={() => handleSelectProcess(p._id)} className="w-full text-left p-4 pb-3">
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'var(--accent-light)' }}>
+                            <svg className="w-5 h-5" style={{ color: 'var(--accent)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d={processIcon} />
+                            </svg>
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{p.name as string}</p>
+                              {isRecent && (
+                                <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full shrink-0" style={{ background: 'var(--accent)', color: '#fff' }}>New</span>
+                              )}
+                            </div>
+                            <p className="text-[11px] mt-1" style={{ color: 'var(--text-muted)' }}>
+                              Modified {relativeTime(p.updatedAt || p.createdAt)}
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                      {/* Card footer with actions */}
+                      <div className="flex items-center justify-between px-4 py-2.5 border-t" style={{ borderColor: 'var(--border)', background: 'var(--bg-secondary)' }}>
+                        <span className="text-[10px] tabular-nums" style={{ color: 'var(--text-muted)' }}>
+                          Created {new Date(p.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          {canEdit && (
+                            <button onClick={() => { setRenameId(p._id); setRenameName(p.name); setRenameModalOpen(true); }} className="p-1 rounded-md transition-colors hover:bg-black/5" style={{ color: 'var(--text-muted)' }} title="Rename">
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                              </svg>
+                            </button>
+                          )}
+                          {canAdmin && (
+                            <button onClick={() => handleDeleteProcess(p._id)} className="p-1 rounded-md transition-colors text-red-400 hover:text-red-600 hover:bg-red-50" title="Delete">
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {filtered.length === 0 && processSearch.trim() && (
+              <div className="text-center py-20 rounded-xl border border-dashed" style={{ borderColor: 'var(--border)' }}>
+                <div className="w-14 h-14 mx-auto mb-4 rounded-2xl flex items-center justify-center" style={{ background: 'var(--bg-secondary)' }}>
+                  <svg className="w-7 h-7" style={{ color: 'var(--text-muted)', opacity: 0.5 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                  </svg>
+                </div>
+                <p className="text-sm font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>No results found</p>
+                <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>
+                  No processes matching &ldquo;{processSearch}&rdquo;
+                </p>
+                <button
+                  onClick={() => setProcessSearch('')}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                  style={{ background: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--accent-light)'; e.currentTarget.style.color = 'var(--accent)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--bg-secondary)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+                >
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Clear search
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
