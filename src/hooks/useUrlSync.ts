@@ -71,43 +71,50 @@ async function apiFetch<T>(url: string): Promise<T> {
 async function loadChatData(chatId: string, branchId?: string, versionId?: string): Promise<boolean> {
   const workspace = useWorkspaceStore.getState();
 
+  workspace.setProcessLoading(true);
   workspace.setCurrentChat(chatId);
 
-  const data = await apiFetch<{ branches: any[] }>(`/api/branches?chatId=${chatId}`);
-  if (!data.branches || data.branches.length === 0) return false;
+  try {
+    const data = await apiFetch<{ branches: any[] }>(`/api/branches?chatId=${chatId}`);
+    if (!data.branches || data.branches.length === 0) {
+      workspace.setProcessLoading(false);
+      return false;
+    }
 
-  workspace.setBranches(data.branches);
+    workspace.setBranches(data.branches);
 
-  let targetBranch = branchId
-    ? data.branches.find((b: any) => b._id === branchId)
-    : null;
-
-  if (!targetBranch) {
-    targetBranch = data.branches.find((b: any) => b.name === 'main') || data.branches[0];
-  }
-
-  if (targetBranch) {
-    workspace.setCurrentBranch(targetBranch._id);
-    const vData = await apiFetch<{ versions: any[] }>(`/api/versions?branchId=${targetBranch._id}`);
-    workspace.setVersions(vData.versions);
-
-    // If a specific version was requested and exists, load it; otherwise load the latest
-    let targetVersion = versionId
-      ? vData.versions.find((v: any) => v._id === versionId)
+    let targetBranch = branchId
+      ? data.branches.find((b: any) => b._id === branchId)
       : null;
 
-    if (!targetVersion && vData.versions.length > 0) {
-      targetVersion = vData.versions[vData.versions.length - 1];
+    if (!targetBranch) {
+      targetBranch = data.branches.find((b: any) => b.name === 'main') || data.branches[0];
     }
 
-    if (targetVersion) {
-      const versionDetail = await apiFetch<{ version: any & { xml: string } }>(`/api/versions?versionId=${targetVersion._id}`);
-      workspace.setCurrentVersion(targetVersion._id);
-      workspace.setCurrentXml(versionDetail.version.xml);
+    if (targetBranch) {
+      workspace.setCurrentBranch(targetBranch._id);
+      const vData = await apiFetch<{ versions: any[] }>(`/api/versions?branchId=${targetBranch._id}`);
+      workspace.setVersions(vData.versions);
+
+      let targetVersion = versionId
+        ? vData.versions.find((v: any) => v._id === versionId)
+        : null;
+
+      if (!targetVersion && vData.versions.length > 0) {
+        targetVersion = vData.versions[vData.versions.length - 1];
+      }
+
+      if (targetVersion) {
+        const versionDetail = await apiFetch<{ version: any & { xml: string } }>(`/api/versions?versionId=${targetVersion._id}`);
+        workspace.setCurrentVersion(targetVersion._id);
+        workspace.setCurrentXml(versionDetail.version.xml);
+      }
     }
+
+    return true;
+  } finally {
+    workspace.setProcessLoading(false);
   }
-
-  return true;
 }
 
 export async function loadProcessFromUrl(chatId: string, branchId?: string, versionId?: string) {

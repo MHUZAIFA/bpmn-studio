@@ -57,7 +57,6 @@ export function BpmnModelerComponent() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState('');
   const [deleting, setDeleting] = useState(false);
-  const [processLoading, setProcessLoading] = useState(false);
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
   const [templateSearch, setTemplateSearch] = useState('');
   const [templateView, setTemplateView] = useState<'grid' | 'list'>('grid');
@@ -87,7 +86,7 @@ export function BpmnModelerComponent() {
   }, [hasProcess, isOnboarding]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSelectProcess = async (chatId: string) => {
-    setProcessLoading(true);
+    workspace.setProcessLoading(true);
     workspace.setCurrentChat(chatId);
     try {
       const data = await api.branches.list(chatId);
@@ -105,7 +104,7 @@ export function BpmnModelerComponent() {
         }
       }
     } catch { /* silent */ }
-    setProcessLoading(false);
+    workspace.setProcessLoading(false);
   };
 
   const handleRenameProcess = async () => {
@@ -1753,23 +1752,38 @@ export function BpmnModelerComponent() {
       )}
 
       {/* Process loading overlay */}
-      {processLoading && (
+      {workspace.isProcessLoading && (
         <div className="absolute inset-0 flex items-center justify-center z-20" style={{ background: 'var(--bg-primary)' }}>
-          <div className="flex flex-col items-center gap-4">
-            <div className="relative">
-              <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: 'var(--accent-light)' }}>
-                <svg className="w-6 h-6" style={{ color: 'var(--accent)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
-                </svg>
+          <div className="flex flex-col items-center">
+            {/* Animated BPMN-style loading graphic */}
+            <div className="relative mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full border-2 animate-pulse" style={{ borderColor: 'var(--accent)', animationDelay: '0ms' }}>
+                  <div className="w-full h-full rounded-full" style={{ background: 'var(--accent)', opacity: 0.15 }} />
+                </div>
+                <div className="w-8 h-0.5 rounded-full animate-pulse" style={{ background: 'var(--accent)', opacity: 0.4, animationDelay: '200ms' }} />
+                <div className="w-8 h-8 rounded-lg border-2 animate-pulse" style={{ borderColor: 'var(--accent)', animationDelay: '400ms' }}>
+                  <div className="w-full h-full rounded-lg" style={{ background: 'var(--accent)', opacity: 0.15 }} />
+                </div>
+                <div className="w-8 h-0.5 rounded-full animate-pulse" style={{ background: 'var(--accent)', opacity: 0.4, animationDelay: '600ms' }} />
+                <div className="w-8 h-8 rounded-full border-2 flex items-center justify-center animate-pulse" style={{ borderColor: 'var(--accent)', animationDelay: '800ms' }}>
+                  <div className="w-3.5 h-3.5 rounded-full" style={{ background: 'var(--accent)', opacity: 0.3 }} />
+                </div>
               </div>
-              <svg className="animate-spin h-5 w-5 absolute -bottom-1 -right-1" style={{ color: 'var(--accent)' }} fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              {/* Connecting arrows */}
+              <svg className="absolute top-1/2 left-[30px] -translate-y-1/2 w-[calc(100%-60px)] h-2 opacity-30" viewBox="0 0 100 8" preserveAspectRatio="none">
+                <path d="M0 4 L100 4" stroke="var(--accent)" strokeWidth="1" strokeDasharray="4 3" fill="none" className="animate-pulse" />
               </svg>
             </div>
-            <div className="text-center">
-              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Loading process...</p>
-              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Fetching branches and versions</p>
+            <div className="flex flex-col items-center gap-2">
+              <div className="flex items-center gap-2.5">
+                <svg className="animate-spin h-4 w-4" style={{ color: 'var(--accent)' }} fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Loading process</p>
+              </div>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Preparing your diagram...</p>
             </div>
           </div>
         </div>

@@ -14,6 +14,7 @@ interface WorkspaceState {
   diffTargetXml: string | null;
   isGenerating: boolean;
   isDeploying: boolean;
+  isProcessLoading: boolean;
   hasProcesses: boolean | null;
   onboardingMode: 'prompt' | 'canvas' | null;
   urlRestored: boolean;
@@ -34,6 +35,7 @@ interface WorkspaceState {
   setDiffResult: (result: DiffResult | null, sourceXml?: string, targetXml?: string) => void;
   setGenerating: (generating: boolean) => void;
   setDeploying: (deploying: boolean) => void;
+  setProcessLoading: (loading: boolean) => void;
   reset: () => void;
 }
 
@@ -50,6 +52,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   diffTargetXml: null,
   isGenerating: false,
   isDeploying: false,
+  isProcessLoading: false,
   hasProcesses: null,
   onboardingMode: null,
   urlRestored: false,
@@ -83,6 +86,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
     set({ diffResult: result, diffSourceXml: sourceXml ?? null, diffTargetXml: targetXml ?? null }),
   setGenerating: (generating) => set({ isGenerating: generating }),
   setDeploying: (deploying) => set({ isDeploying: deploying }),
+  setProcessLoading: (loading) => set({ isProcessLoading: loading }),
   reset: () =>
     set({
       currentChatId: null,
@@ -95,6 +99,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
       diffResult: null,
       isGenerating: false,
       isDeploying: false,
+      isProcessLoading: false,
       hasProcesses: null,
       onboardingMode: null,
       urlRestored: false,
