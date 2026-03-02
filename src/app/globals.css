@@ -1,0 +1,331 @@
+@import "tailwindcss";
+@import "bpmn-js/dist/assets/diagram-js.css";
+@import "bpmn-js/dist/assets/bpmn-js.css";
+@import "bpmn-js/dist/assets/bpmn-font/css/bpmn-embedded.css";
+
+@theme inline {
+  --font-sans: var(--font-inter);
+  --breakpoint-xs: 480px;
+}
+
+:root {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f9fafb;
+  --bg-canvas: #f3f4f6;
+  --border: #e5e7eb;
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --text-muted: #9ca3af;
+  --accent: #2563eb;
+  --accent-light: #eff6ff;
+  --accent-text: #1d4ed8;
+  --card-bg: #ffffff;
+  --card-border: #f3f4f6;
+  --card-active-bg: #eff6ff;
+  --card-active-border: #bfdbfe;
+  --header-bg: #ffffff;
+  --header-border: #e5e7eb;
+  --input-bg: #ffffff;
+  --input-border: #d1d5db;
+  --bpmn-element-stroke: #374151;
+  --bpmn-element-fill: #ffffff;
+  --bpmn-text: #111827;
+  --bpmn-connection: #6b7280;
+  --bpmn-marker: #6b7280;
+  --bpmn-event-stroke: #374151;
+  --bpmn-gateway-stroke: #d97706;
+}
+
+body {
+  background: var(--bg-canvas);
+  color: var(--text-primary);
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+}
+
+button,
+[role="button"],
+a[href],
+select,
+input[type="checkbox"],
+input[type="radio"],
+input[type="submit"],
+input[type="button"],
+label[for],
+summary {
+  cursor: pointer;
+}
+
+/* bpmn-js styles */
+.bjs-container {
+  width: 100%;
+  height: 100%;
+}
+
+.bjs-powered-by {
+  display: none !important;
+}
+
+.djs-container {
+  background: var(--bg-canvas) !important;
+  outline: none !important;
+}
+
+.djs-container:focus,
+.djs-container *:focus {
+  outline: none !important;
+}
+
+.djs-palette {
+  background: var(--bg-primary) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+  display: flex !important;
+  flex-direction: row !important;
+  width: auto !important;
+  height: auto !important;
+}
+
+.djs-palette .djs-palette-entries {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+}
+
+.djs-palette .djs-palette-entries .group {
+  display: flex !important;
+  flex-direction: row !important;
+  border-left: 1px solid var(--border) !important;
+  border-bottom: none !important;
+  padding: 0 2px !important;
+}
+
+.djs-palette .djs-palette-entries .group:first-child {
+  border-left: none !important;
+}
+
+.djs-palette .djs-palette-toggle,
+.djs-palette .djs-palette-entries hr {
+  display: none !important;
+}
+
+.djs-palette.two-column {
+  width: auto !important;
+}
+
+.djs-palette.two-column .djs-palette-entries .group {
+  flex-wrap: nowrap !important;
+}
+
+.djs-palette.open {
+  width: auto !important;
+}
+
+/* Palette position: left (default) — vertical, centered */
+.palette-left .djs-palette {
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  left: 10px !important;
+  flex-direction: column !important;
+}
+.palette-left .djs-palette .djs-palette-entries {
+  flex-direction: column !important;
+}
+.palette-left .djs-palette .djs-palette-entries .group {
+  flex-direction: column !important;
+  border-left: none !important;
+  border-bottom: 1px solid var(--border) !important;
+  padding: 2px 0 !important;
+}
+.palette-left .djs-palette .djs-palette-entries .group:last-child {
+  border-bottom: none !important;
+}
+
+/* Palette position: right — vertical, centered */
+.palette-right .djs-palette {
+  left: auto !important;
+  right: 10px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  bottom: auto !important;
+  flex-direction: column !important;
+}
+.palette-right .djs-palette .djs-palette-entries {
+  flex-direction: column !important;
+}
+.palette-right .djs-palette .djs-palette-entries .group {
+  flex-direction: column !important;
+  border-left: none !important;
+  border-bottom: 1px solid var(--border) !important;
+  padding: 2px 0 !important;
+}
+.palette-right .djs-palette .djs-palette-entries .group:last-child {
+  border-bottom: none !important;
+}
+
+/* Palette position: top — horizontal centered */
+.palette-top .djs-palette {
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  top: 10px !important;
+  right: auto !important;
+  bottom: auto !important;
+}
+
+/* Palette position: bottom — horizontal centered */
+.palette-bottom .djs-palette {
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: 10px !important;
+}
+
+.djs-palette .entry {
+  cursor: pointer !important;
+}
+
+.djs-palette .entry:hover {
+  color: var(--accent) !important;
+}
+
+.djs-context-pad {
+  background: var(--bg-primary) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+}
+
+.djs-popup {
+  background: var(--bg-primary) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+  color: var(--text-primary) !important;
+}
+
+.djs-popup .entry:hover {
+  background: var(--accent-light) !important;
+}
+
+.djs-direct-editing-parent {
+  background: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--accent) !important;
+  border-radius: 4px !important;
+}
+
+/* BPMN element theming - tasks, subprocesses, call activities */
+.djs-shape:not(.diff-added):not(.diff-removed):not(.diff-modified) .djs-visual > rect {
+  stroke: var(--bpmn-element-stroke) !important;
+  fill: var(--bpmn-element-fill) !important;
+}
+
+/* Events (start, end, intermediate) */
+.djs-shape:not(.diff-added):not(.diff-removed):not(.diff-modified) .djs-visual > circle {
+  stroke: var(--bpmn-event-stroke) !important;
+  fill: var(--bpmn-element-fill) !important;
+}
+
+/* Gateways */
+.djs-shape:not(.diff-added):not(.diff-removed):not(.diff-modified) .djs-visual > polygon {
+  stroke: var(--bpmn-gateway-stroke) !important;
+  fill: var(--bpmn-element-fill) !important;
+}
+
+/* Sequence flows and connections */
+.djs-connection:not(.diff-added):not(.diff-removed):not(.diff-modified) .djs-visual > path {
+  stroke: var(--bpmn-connection) !important;
+}
+
+/* Connection markers (arrowheads) */
+.djs-container .djs-connection:not(.diff-added):not(.diff-removed):not(.diff-modified) .djs-visual marker path {
+  fill: var(--bpmn-marker) !important;
+  stroke: var(--bpmn-marker) !important;
+}
+
+/* All text labels inside shapes and connections */
+.djs-visual text {
+  fill: var(--bpmn-text) !important;
+}
+
+.djs-label text {
+  fill: var(--bpmn-text) !important;
+}
+
+/* Palette icon colors */
+.djs-palette .entry {
+  color: var(--text-secondary) !important;
+}
+
+/* Context pad entries */
+.djs-context-pad .entry {
+  color: var(--text-secondary) !important;
+}
+
+/* Selection outline */
+.djs-outline {
+  stroke: var(--accent) !important;
+}
+
+/* Hit regions remain transparent */
+.djs-hit {
+  fill: none !important;
+  stroke: transparent !important;
+}
+
+/* Diff markers */
+.diff-added:not(.djs-connection) .djs-visual > :nth-child(1) {
+  stroke: #22c55e !important;
+  fill: #dcfce7 !important;
+}
+
+.diff-removed:not(.djs-connection) .djs-visual > :nth-child(1) {
+  stroke: #ef4444 !important;
+  fill: #fee2e2 !important;
+}
+
+.diff-modified:not(.djs-connection) .djs-visual > :nth-child(1) {
+  stroke: #eab308 !important;
+  fill: #fef9c3 !important;
+}
+
+.diff-added.djs-connection .djs-visual > path {
+  stroke: #22c55e !important;
+}
+
+.diff-removed.djs-connection .djs-visual > path {
+  stroke: #ef4444 !important;
+}
+
+.diff-modified.djs-connection .djs-visual > path {
+  stroke: #eab308 !important;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-hidden {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
