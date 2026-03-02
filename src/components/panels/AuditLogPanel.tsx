@@ -359,7 +359,7 @@ export function AuditLogPanel({ isOpen, onClose }: AuditLogPanelProps) {
                             <div className="relative z-10 w-[31px] flex justify-center pt-3 shrink-0">
                               <div
                                 className="w-[9px] h-[9px] rounded-full ring-2"
-                                style={{ background: config.color, ringColor: 'var(--bg-primary)' }}
+                                style={{ background: config.color, '--tw-ring-color': 'var(--bg-primary)' } as React.CSSProperties}
                               />
                             </div>
 
