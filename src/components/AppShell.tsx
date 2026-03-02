@@ -12,6 +12,8 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { BpmnModelerComponent } from '@/components/bpmn/BpmnModeler';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { Role } from '@/types';
+import { Analytics } from '@vercel/analytics/next';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 export function AppShell() {
   const { user, loading, setUser, setLoading } = useAuthStore();
@@ -152,6 +154,8 @@ export function AppShell() {
           )}
         </div>
       </div>
+      <Analytics/>
+      <SpeedInsights/>
     </ThemeProvider>
   );
 }
