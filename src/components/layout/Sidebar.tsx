@@ -62,10 +62,13 @@ export function Sidebar({ position = 'left' }: { position?: 'left' | 'right' }) 
 
   // Auto-scroll to bottom when versions change
   useEffect(() => {
-    if (versionsEndRef.current) {
-      versionsEndRef.current.scrollTop = versionsEndRef.current.scrollHeight;
-    }
-  }, [workspace.versions]);
+    const el = versionsEndRef.current;
+    if (!el) return;
+    const timer = setTimeout(() => {
+      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [workspace.versions, workspace.currentVersionId]);
 
   const handleSelectBranch = async (branchId: string) => {
     workspace.setCurrentBranch(branchId);
@@ -201,7 +204,12 @@ export function Sidebar({ position = 'left' }: { position?: 'left' | 'right' }) 
       workspace.setCurrentXml(data.xml);
       setPrompt('');
       if (textareaRef.current) textareaRef.current.style.height = 'auto';
-      if (workspace.currentBranchId) await loadVersions(workspace.currentBranchId);
+      if (workspace.currentBranchId) {
+        await loadVersions(workspace.currentBranchId);
+        if (data.version?._id) {
+          workspace.setCurrentVersion(data.version._id);
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'AI generation failed');
     } finally {

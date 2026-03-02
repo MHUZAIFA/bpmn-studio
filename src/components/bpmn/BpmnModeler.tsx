@@ -355,9 +355,14 @@ export function BpmnModelerComponent() {
     setSaving(true);
     try {
       const { xml } = await modelerRef.current.saveXML({ format: true });
-      await api.versions.save(xml, 'Manual edit');
+      const result = await api.versions.save(xml, 'Manual edit');
       workspace.setCurrentXml(xml);
       setHasChanges(false);
+      const data = await api.versions.list(workspace.currentBranchId);
+      workspace.setVersions(data.versions as never[]);
+      if (result.version?._id) {
+        workspace.setCurrentVersion(result.version._id);
+      }
     } catch (err) {
       console.error('Failed to save:', err);
     } finally {
