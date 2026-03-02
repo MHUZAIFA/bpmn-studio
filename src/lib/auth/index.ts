@@ -3,16 +3,21 @@ import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { JWTPayload, AuthenticatedRequest, Role } from '@/types';
 
-const JWT_SECRET = process.env.JWT_SECRET!;
 const TOKEN_NAME = 'bpmn_token';
 const TOKEN_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new Error('JWT_SECRET environment variable is not defined');
+  return secret;
+}
+
 export function signToken(payload: JWTPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: TOKEN_MAX_AGE });
+  return jwt.sign(payload, getJwtSecret(), { expiresIn: TOKEN_MAX_AGE });
 }
 
 export function verifyToken(token: string): JWTPayload {
-  return jwt.verify(token, JWT_SECRET) as JWTPayload;
+  return jwt.verify(token, getJwtSecret()) as JWTPayload;
 }
 
 export function setTokenCookie(response: NextResponse, token: string): void {
