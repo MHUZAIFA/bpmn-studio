@@ -58,7 +58,7 @@ Enter any username and password. If the user doesn't exist, a new organization i
 
 | Variable | Description |
 |----------|-------------|
-| `MONGO_URI` | MongoDB connection string |
+| `MONGODB_URI` | MongoDB connection string |
 | `JWT_SECRET` | Secret for JWT signing |
 | `XML_ENCRYPTION_SECRET` | Key for AES-256 XML encryption |
 | `GROQ_API_KEY` | Groq API key |
