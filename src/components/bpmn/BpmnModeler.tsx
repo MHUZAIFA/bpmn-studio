@@ -57,6 +57,7 @@ export function BpmnModelerComponent() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [processLoading, setProcessLoading] = useState(false);
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
   const [templateSearch, setTemplateSearch] = useState('');
   const [templateView, setTemplateView] = useState<'grid' | 'list'>('grid');
@@ -86,6 +87,7 @@ export function BpmnModelerComponent() {
   }, [hasProcess, isOnboarding]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSelectProcess = async (chatId: string) => {
+    setProcessLoading(true);
     workspace.setCurrentChat(chatId);
     try {
       const data = await api.branches.list(chatId);
@@ -103,6 +105,7 @@ export function BpmnModelerComponent() {
         }
       }
     } catch { /* silent */ }
+    setProcessLoading(false);
   };
 
   const handleRenameProcess = async () => {
@@ -1749,7 +1752,30 @@ export function BpmnModelerComponent() {
         </div>
       )}
 
-      {/* Loading overlay */}
+      {/* Process loading overlay */}
+      {processLoading && (
+        <div className="absolute inset-0 flex items-center justify-center z-20" style={{ background: 'var(--bg-primary)' }}>
+          <div className="flex flex-col items-center gap-4">
+            <div className="relative">
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: 'var(--accent-light)' }}>
+                <svg className="w-6 h-6" style={{ color: 'var(--accent)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+                </svg>
+              </div>
+              <svg className="animate-spin h-5 w-5 absolute -bottom-1 -right-1" style={{ color: 'var(--accent)' }} fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Loading process...</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Fetching branches and versions</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AI generating overlay */}
       {workspace.isGenerating && (
         <div className="absolute inset-0 flex items-center justify-center z-20" style={{ background: 'color-mix(in srgb, var(--bg-primary) 80%, transparent)' }}>
           <div className="flex flex-col items-center gap-3">
